@@ -47,7 +47,7 @@ const config = {
 const puppeteer = require("puppeteer");
 
 async function checkKabum(item) {
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
   const url = config.kabum.listingAddress.replace(
@@ -110,7 +110,7 @@ async function checkKabum(item) {
 }
 
 async function checkPichau(item) {
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
   const url = config.pichau.listingAddress.replace("{{SearchTerm}}", item.name);
@@ -171,12 +171,16 @@ async function checkPichau(item) {
 }
 
 async function checkTerabyte(item) {
-  const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
 
   const url = config.terabyte.listingAddress.replace(
     "{{SearchTerm}}",
     item.name.replace(" ", "+")
+  );
+  // Set UserAgent to bypass Headless access protection
+  await page.setUserAgent(
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.75 Safari/537.36"
   );
   await page.goto(url, { waitUntil: "domcontentloaded" });
 
@@ -234,11 +238,16 @@ async function checkTerabyte(item) {
   return result;
 }
 
-itensToCheck.forEach(async (item) => {
-  const kabumPrices = await checkKabum(item);
-  const pichauPrices = await checkPichau(item);
-  const terabytePrices = await checkTerabyte(item);
-  console.log(" ===========================  "+item.name+"  ======================")
+(async () => {
+  for (const item of itensToCheck) {
+    console.log(
+      " ===========================  " + item.name + "  ======================"
+    );
 
-  console.log(kabumPrices, pichauPrices, terabytePrices);
-});
+    const kabumPrices = checkKabum(item);
+    const pichauPrices = checkPichau(item);
+    const terabytePrices = checkTerabyte(item);
+
+    await Promise.all([kabumPrices, pichauPrices, terabytePrices]);
+  }
+})();
