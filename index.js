@@ -368,9 +368,9 @@ async function checkPrices() {
     kabum &&
       pricesToNotify.push(...kabum.filter((price) => price.shouldNotify));
     pichau &&
-      pricesToNotify.push(...kabum.filter((price) => price.shouldNotify));
+      pricesToNotify.push(...pichau.filter((price) => price.shouldNotify));
     terabyte &&
-      pricesToNotify.push(...kabum.filter((price) => price.shouldNotify));
+      pricesToNotify.push(...terabyte.filter((price) => price.shouldNotify));
   });
 
   console.log("=> HANDLE NOTIFICATIONS");
