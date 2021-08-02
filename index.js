@@ -154,7 +154,7 @@ async function checkKabum(item) {
 
     await browser.close();
 
-    console.log("Processed", result.length + 1);
+    console.log("Processed Kabum", result.length + 1);
     return result;
   } catch (error) {
     await browser.close();
@@ -229,7 +229,7 @@ async function checkPichau(item) {
     );
 
     await browser.close();
-    console.log("Processed", result.length + 1);
+    console.log("Processed Pichau", result.length + 1);
 
     return result;
   } catch (error) {
@@ -305,7 +305,7 @@ async function checkTerabyte(item) {
 
     await browser.close();
 
-    console.log("Processed", result.length + 1);
+    console.log("Processed Terabyte", result.length + 1);
     return result;
   } catch (error) {
     await browser.close();
