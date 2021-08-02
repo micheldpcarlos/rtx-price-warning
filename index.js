@@ -21,7 +21,7 @@ const config = {
   kabum: {
     rootAddress: "www.kabum.com.br",
     listingAddress:
-      "https://www.kabum.com.br/cgi-local/site/listagem/listagem.cgi?string={{SearchTerm}}&btnG=&pagina=1&ordem=3&limite=100&prime=false&marcas=[]&tipo_produto=[]&filtro=[]",
+      "https://servicespub.prod.api.aws.grupokabum.com.br/catalog/v1/products?query={{SearchTerm}}&page_number=1&page_size=100&facet_filters=&sort=price&include=gift",
     itemsSelector: ".eITELq",
     titleLinkSelector: ".item-nome",
     priceSelector: ".qatGF",
@@ -49,9 +49,12 @@ const messagedItems = [];
 // Puppeteer import constant
 const puppeteer = require("puppeteer");
 
+// Axios to get data directly from API
+const axios = require("axios");
+
 // Telegram Bot constants
 const TelegramBot = require("node-telegram-bot-api");
-const token = "{{_BOT_TOKEN_}}";
+const token = "1903828310:AAH3IReLGtI9ndkeF41F84wuPvRmpOYBFaQ";
 const bot = new TelegramBot(token, { polling: true });
 
 // SEND INITIAL MESSAGE TO GROUP
@@ -67,7 +70,7 @@ const initialMessage =
     );
   }, "");
 
-bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
+// bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
 
 // Set telegram bot listener
 bot.on("message", (msg) => {
@@ -88,76 +91,54 @@ bot.on("message", (msg) => {
   }
 });
 
+// Async delay function
+function delay(time) {
+  return new Promise(function(resolve) { 
+      setTimeout(resolve, time)
+  });
+}
+
 // Check Kabum prices for a give item and return an array with available products
 async function checkKabum(item) {
   console.log("Processing Kabum", item);
-  const browser = await puppeteer.launch({ headless: true });
+
+  const url = config.kabum.listingAddress.replace(
+    "{{SearchTerm}}",
+    item.name.replace(" ", "+")
+  );
+
   try {
-    const page = await browser.newPage();
+    const products = [];
+    await axios.get(url).then((result) => {
+      const filteredResult = result.data.data.filter(
+        (product) =>
+          product.attributes.title
+            .toLowerCase()
+            .includes(item.name.toLowerCase()) && product.attributes.available
+      );
 
-    const url = config.kabum.listingAddress.replace(
-      "{{SearchTerm}}",
-      item.name.replace(" ", "+")
-    );
+      filteredResult.forEach((product) => {
+        const price = product.attributes.offer
+          ? product.attributes.offer.price_with_discount
+          : product.attributes.price;
 
-    // Set UserAgent to bypass Headless access protection
-    await page.setUserAgent(
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.75 Safari/537.36"
-    );
+        products.push({
+          name: item.name,
+          title: product.attributes.title,
+          link: "kabum.com.br" + product.links.self,
+          price: price.toLocaleString("pt-br", {
+            style: "currency",
+            currency: "BRL",
+          }),
+          numericPrice: price,
+          shouldNotify: price <= item.minToAlert,
+        });
+      });
+      console.log("Processed Kabum", products.length);
+    });
 
-    await page.goto(url, { waitUntil: "domcontentloaded" });
-
-    const result = await page.evaluate(
-      (config, item) => {
-        // Get all products
-        const products = [
-          ...document.querySelectorAll(config.kabum.itemsSelector),
-        ]
-          // filter by only products enabled to buy
-          .filter((productEl) => !productEl.innerHTML.includes("comprar_off"))
-          // filter by only containing the name (To avoid listing non Ti when searching Ti)
-          .filter((productEl) =>
-            productEl.innerHTML.toLowerCase().includes(item.name.toLowerCase())
-          )
-          // Map to a serializable value to return to evaluate method
-          .map((product) => {
-            // Title and Link
-            const titleLink = product.querySelector(
-              config.kabum.titleLinkSelector
-            );
-            const link = titleLink.getAttribute("href");
-            const title = titleLink.textContent;
-
-            //Price and numericPrice
-            const price = product.querySelector(
-              config.kabum.priceSelector
-            ).textContent;
-
-            const numericPrice = Number(
-              price.replace("R$", "").replace(",", ".").replace(".", "").trim()
-            );
-
-            return {
-              name: item.name,
-              title: title,
-              link: config.kabum.rootAddress + link,
-              price: price,
-              numericPrice: numericPrice,
-              shouldNotify: numericPrice <= item.minToAlert,
-            };
-          });
-        return products;
-      },
-      config,
-      item
-    );
-
-    await browser.close();
-
-    console.log("Processed Kabum", result.length + 1);
-    return result;
+    return products;
   } catch (error) {
-    await browser.close();
     console.log("ERROR WHILE PROCESSING KABUM => ", item, error);
   }
 }
@@ -181,6 +162,9 @@ async function checkPichau(item) {
     );
 
     await page.goto(url, { waitUntil: "domcontentloaded" });
+
+    // wait few secconds to ensure page load
+    await delay(4000);
 
     const result = await page.evaluate(
       (config, item) => {
@@ -229,7 +213,7 @@ async function checkPichau(item) {
     );
 
     await browser.close();
-    console.log("Processed Pichau", result.length + 1);
+    console.log("Processed Pichau", result.length);
 
     return result;
   } catch (error) {
@@ -305,7 +289,7 @@ async function checkTerabyte(item) {
 
     await browser.close();
 
-    console.log("Processed Terabyte", result.length + 1);
+    console.log("Processed Terabyte", result.length);
     return result;
   } catch (error) {
     await browser.close();
