@@ -70,7 +70,7 @@ const initialMessage =
     );
   }, "");
 
-// bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
+bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
 
 // Set telegram bot listener
 bot.on("message", (msg) => {
@@ -93,8 +93,8 @@ bot.on("message", (msg) => {
 
 // Async delay function
 function delay(time) {
-  return new Promise(function(resolve) { 
-      setTimeout(resolve, time)
+  return new Promise(function (resolve) {
+    setTimeout(resolve, time);
   });
 }
 
@@ -164,7 +164,7 @@ async function checkPichau(item) {
     await page.goto(url, { waitUntil: "domcontentloaded" });
 
     // wait few secconds to ensure page load
-    await delay(4000);
+    await delay(10000);
 
     const result = await page.evaluate(
       (config, item) => {
