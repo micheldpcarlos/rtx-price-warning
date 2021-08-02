@@ -125,7 +125,7 @@ async function checkKabum(item) {
         products.push({
           name: item.name,
           title: product.attributes.title,
-          link: "kabum.com.br" + product.links.self,
+          link: item.rootAddress + product.links.self,
           price: price.toLocaleString("pt-br", {
             style: "currency",
             currency: "BRL",
