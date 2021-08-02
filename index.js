@@ -51,7 +51,7 @@ const puppeteer = require("puppeteer");
 
 // Telegram Bot constants
 const TelegramBot = require("node-telegram-bot-api");
-const token = "1903828310:AAH3IReLGtI9ndkeF41F84wuPvRmpOYBFaQ";
+const token = "{{_BOT_TOKEN_}}";
 const bot = new TelegramBot(token, { polling: true });
 
 // SEND INITIAL MESSAGE TO GROUP
