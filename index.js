@@ -46,7 +46,7 @@ const config = {
 };
 
 const messagedItems = [];
-const useHeadless = false;
+const useHeadless = true;
 
 // Puppeteer import constant
 const puppeteer = require("puppeteer-extra");
@@ -87,7 +87,7 @@ const initialMessage =
     );
   }, "");
 
-// bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
+bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
 
 // Set telegram bot listener
 bot.on("message", (msg) => {
