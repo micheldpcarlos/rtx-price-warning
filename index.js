@@ -44,6 +44,7 @@ const config = {
     priceSelector: ".prod-new-price > span",
   },
 };
+const expect = require("expect-puppeteer");
 
 const messagedItems = [];
 const useHeadless = false;
@@ -259,10 +260,12 @@ async function checkTerabyte(item) {
     // Set UserAgent to bypass Headless access protection
     await page.setUserAgent(randomUseragent.getRandom());
 
-    await page.goto(url, { waitUntil: "domcontentloaded" });
+    await page.goto(url, {
+      waitUntil: "domcontentloaded",
+    });
 
-    // Wait for checking
-    await delay(10000);
+    // Wair for the protection to resolve
+    await page.waitFor(config.terabyte.itemsSelector, { timeout: 120000 });
 
     const result = await page.evaluate(
       (config, item) => {
@@ -356,38 +359,67 @@ async function checkPrices() {
   for (const [index, item] of resultData.entries()) {
     const kabumPrices = checkKabum(item);
     const pichauPrices = checkPichau(item);
-    const terabytePrices = checkTerabyte(item);
 
-    await Promise.all([kabumPrices, pichauPrices, terabytePrices]).then(
-      async () => {
-        resultData[index].kabum = await kabumPrices;
-        resultData[index].pichau = await pichauPrices;
-        resultData[index].terabyte = await terabytePrices;
-      }
-    );
+    await Promise.all([kabumPrices, pichauPrices]).then(async () => {
+      resultData[index].kabum = await kabumPrices;
+      resultData[index].pichau = await pichauPrices;
+    });
   }
 
   // Check and notify loop
   resultData.forEach((item) => {
-    const { kabum, pichau, terabyte } = item;
+    const { kabum, pichau } = item;
 
     kabum &&
       pricesToNotify.push(...kabum.filter((price) => price.shouldNotify));
     pichau &&
       pricesToNotify.push(...pichau.filter((price) => price.shouldNotify));
-    terabyte &&
-      pricesToNotify.push(...terabyte.filter((price) => price.shouldNotify));
   });
 
   console.log("=> HANDLE NOTIFICATIONS");
   sendNotifications(pricesToNotify);
 }
 
+async function checkTerabytePrices() {
+  let resultData = [];
+
+  itensToCheck.forEach((item) => {
+    resultData.push(Object.assign({}, item));
+  });
+
+  const tbPrices = [];
+  for (const [index, item] of resultData.entries()) {
+    try {
+      const terabytePrices = await checkTerabyte(item);
+      tbPrices.push(...terabytePrices.filter((price) => price.shouldNotify));
+    } catch {
+      console.log(" Error Terabyte");
+    }
+  }
+  sendNotifications(tbPrices);
+
+  // set random timout to avoid ddos block
+  function randomIntFromInterval(min, max) {
+    // min and max included
+    return Math.floor(Math.random() * (max - min + 1) + min);
+  }
+
+  // From 2 to 5 minutes
+  const rndInt = randomIntFromInterval(120000, 300000);
+
+  setTimeout(() => {
+    checkTerabytePrices();
+  }, rndInt);
+}
+
 // Initial run
-checkPrices();
+//checkPrices();
+
+// Initial Terabyte Prices
+checkTerabytePrices();
 
 // Since it takes about 15sec to run, we run it every minute
 // without tracking if it finished the first one
-setInterval(() => {
-  checkPrices();
-}, 60000);
+// setInterval(() => {
+//   checkPrices();
+// }, 60000);
