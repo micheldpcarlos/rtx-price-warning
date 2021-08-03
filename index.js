@@ -443,13 +443,21 @@ async function checkTerabytePrices() {
     let errCounter = 0;
     let success = false;
     // Try different proxy while not success (5 times);
-    while (!success && errCounter < 4) {
+    while (!success && errCounter < 5) {
       try {
-        const terabytePrices = await checkTerabyte(item);
-        products.push(...terabytePrices.filter((price) => price.shouldNotify));
-        success = true;
+        await checkTerabyte(item).then((terabytePrices) => {
+          products.push(
+            ...terabytePrices.filter((price) => price.shouldNotify)
+          );
+          success = true;
+        });
       } catch {
-        errCounter++;
+        if (errCounter < 5) {
+          console.log(`Terabyte error getting ${item.name} trying again...`);
+          errCounter++;
+        } else {
+          console.log(`Terabyte ${item.name} - all attempts failed`);
+        }
       }
     }
   }
