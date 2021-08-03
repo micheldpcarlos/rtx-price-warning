@@ -45,12 +45,18 @@ const config = {
 };
 
 const messagedItems = [];
+const useHeadless = false;
+
+
 
 // Puppeteer import constant
 const puppeteer = require("puppeteer");
 
 // Axios to get data directly from API
 const axios = require("axios");
+
+// Random userAgent to avoid detection
+const randomUseragent = require("random-useragent");
 
 // Telegram Bot constants
 const TelegramBot = require("node-telegram-bot-api");
@@ -109,33 +115,35 @@ async function checkKabum(item) {
 
   try {
     const products = [];
-    await axios.get(url).then((result) => {
-      const filteredResult = result.data.data.filter(
-        (product) =>
-          product.attributes.title
-            .toLowerCase()
-            .includes(item.name.toLowerCase()) && product.attributes.available
-      );
+    await axios
+      .get(url, { headers: { "User-Agent": randomUseragent.getRandom() } })
+      .then((result) => {
+        const filteredResult = result.data.data.filter(
+          (product) =>
+            product.attributes.title
+              .toLowerCase()
+              .includes(item.name.toLowerCase()) && product.attributes.available
+        );
 
-      filteredResult.forEach((product) => {
-        const price = product.attributes.offer
-          ? product.attributes.offer.price_with_discount
-          : product.attributes.price;
+        filteredResult.forEach((product) => {
+          const price = product.attributes.offer
+            ? product.attributes.offer.price_with_discount
+            : product.attributes.price;
 
-        products.push({
-          name: item.name,
-          title: product.attributes.title,
-          link: item.rootAddress + product.links.self,
-          price: price.toLocaleString("pt-br", {
-            style: "currency",
-            currency: "BRL",
-          }),
-          numericPrice: price,
-          shouldNotify: price <= item.minToAlert,
+          products.push({
+            name: item.name,
+            title: product.attributes.title,
+            link: item.rootAddress + product.links.self,
+            price: price.toLocaleString("pt-br", {
+              style: "currency",
+              currency: "BRL",
+            }),
+            numericPrice: price,
+            shouldNotify: price <= item.minToAlert,
+          });
         });
+        console.log("Processed Kabum", products.length);
       });
-      console.log("Processed Kabum", products.length);
-    });
 
     return products;
   } catch (error) {
@@ -146,7 +154,7 @@ async function checkKabum(item) {
 // Check Pichau prices for a give item and return an array with available products
 async function checkPichau(item) {
   console.log("Processing Pichau", item);
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({ headless: useHeadless });
 
   try {
     const page = await browser.newPage();
@@ -157,9 +165,7 @@ async function checkPichau(item) {
     );
 
     // Set UserAgent to bypass Headless access protection
-    await page.setUserAgent(
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.75 Safari/537.36"
-    );
+    await page.setUserAgent(randomUseragent.getRandom());
 
     await page.goto(url, { waitUntil: "domcontentloaded" });
 
@@ -225,7 +231,7 @@ async function checkPichau(item) {
 // Check Terabyte prices for a give item and return an array with available products
 async function checkTerabyte(item) {
   console.log("Processing Terabyte", item);
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({ headless: useHeadless });
 
   try {
     const page = await browser.newPage();
@@ -236,9 +242,7 @@ async function checkTerabyte(item) {
     );
 
     // Set UserAgent to bypass Headless access protection
-    await page.setUserAgent(
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.75 Safari/537.36"
-    );
+    await page.setUserAgent(randomUseragent.getRandom());
 
     await page.goto(url, { waitUntil: "domcontentloaded" });
 
@@ -262,6 +266,8 @@ async function checkTerabyte(item) {
             );
             const link = titleLink.getAttribute("href");
             const title = titleLink.textContent;
+
+            console.log(product.innerHTML);
 
             //Price and numericPrice
             const price = product.querySelector(
