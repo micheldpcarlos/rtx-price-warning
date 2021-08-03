@@ -44,22 +44,11 @@ const config = {
     priceSelector: ".prod-new-price > span",
   },
 };
-const expect = require("expect-puppeteer");
-
 const messagedItems = [];
 const useHeadless = false;
 
 // Puppeteer import constant
-const puppeteer = require("puppeteer-extra");
-
-// add stealth plugin and use defaults (all evasion techniques)
-const StealthPlugin = require("puppeteer-extra-plugin-stealth");
-puppeteer.use(StealthPlugin());
-
-// Add adblocker plugin, which will transparently block ads in all pages you
-// create using puppeteer.
-const AdblockerPlugin = require("puppeteer-extra-plugin-adblocker");
-puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
+const puppeteer = require("puppeteer");
 
 // Axios to get data directly from API
 const axios = require("axios");
@@ -70,10 +59,7 @@ const randomUseragent = require("random-useragent");
 // Telegram Bot constants
 const TelegramBot = require("node-telegram-bot-api");
 const token = "1903828310:AAH3IReLGtI9ndkeF41F84wuPvRmpOYBFaQ";
-const bot = new TelegramBot(token, { polling: true });
-
-// LET ME LISTEN ALL BROWSERS
-process.setMaxListeners(Infinity);
+const bot = new TelegramBot(token);
 
 // SEND INITIAL MESSAGE TO GROUP
 const initialMessage =
@@ -88,38 +74,10 @@ const initialMessage =
     );
   }, "");
 
-//bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
-
-// Set telegram bot listener
-bot.on("message", (msg) => {
-  if (msg.text.toLowerCase() == "@RtxPriceBot pricebase".toLowerCase()) {
-    const chatId = msg.chat.id;
-
-    const message = itensToCheck.reduce((prevVal, currVal) => {
-      return (
-        prevVal +
-        `<b>${currVal.name}</b> ==> ${currVal.minToAlert.toLocaleString(
-          "pt-br",
-          { style: "currency", currency: "BRL" }
-        )}\n\n`
-      );
-    }, "");
-
-    bot.sendMessage(chatId, message, { parse_mode: "HTML" });
-  }
-});
-
-// Async delay function
-function delay(time) {
-  return new Promise(function (resolve) {
-    setTimeout(resolve, time);
-  });
-}
+// bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
 
 // Check Kabum prices for a give item and return an array with available products
 async function checkKabum(item) {
-  console.log("Processing Kabum", item);
-
   const url = config.kabum.listingAddress.replace(
     "{{SearchTerm}}",
     item.name.replace(" ", "+")
@@ -154,7 +112,7 @@ async function checkKabum(item) {
             shouldNotify: price <= item.minToAlert,
           });
         });
-        console.log("Processed Kabum", products.length);
+        console.log(`Processed ${item.name} - Kabum - Qtd: ${products.length}`);
       });
 
     return products;
@@ -165,7 +123,6 @@ async function checkKabum(item) {
 
 // Check Pichau prices for a give item and return an array with available products
 async function checkPichau(item) {
-  console.log("Processing Pichau", item);
   const browser = await puppeteer.launch({ headless: useHeadless });
 
   try {
@@ -233,7 +190,7 @@ async function checkPichau(item) {
     );
 
     await browser.close();
-    console.log("Processed Pichau", result.length);
+    console.log(`Processed ${item.name} - Pichau - Qtd: ${result.length}`);
 
     return result;
   } catch (error) {
@@ -244,13 +201,15 @@ async function checkPichau(item) {
 
 // Check Terabyte prices for a give item and return an array with available products
 async function checkTerabyte(item) {
-  console.log("Processing Terabyte", item);
   const browser = await puppeteer.launch({ headless: useHeadless });
 
   try {
     const page = await browser.newPage();
 
     await page.setViewport({ width: 1600, height: 900 });
+
+    // Set UserAgent to bypass Headless access protection
+    await page.setUserAgent(randomUseragent.getRandom());
 
     const url = config.terabyte.listingAddress.replace(
       "{{SearchTerm}}",
@@ -313,7 +272,7 @@ async function checkTerabyte(item) {
     );
 
     await browser.close();
-    console.log("Processed Terabyte", result.length);
+    console.log(`Processed ${item.name} - Terabyte - Qtd: ${result.length}`);
 
     return result;
   } catch (error) {
@@ -322,8 +281,8 @@ async function checkTerabyte(item) {
   }
 }
 
-function sendNotifications(itemsToNotify) {
-  console.log("==== Sending notifications ====");
+function sendNotifications(itemsToNotify, storeTitle) {
+  console.log(`==== SENDING NOTIFICATIONS: ${storeTitle} ====`);
   // filter only if it is not notified yet (considering name and price)
   const filteredItems = itemsToNotify.filter(
     (item) =>
@@ -346,38 +305,36 @@ function sendNotifications(itemsToNotify) {
   messagedItems.push(...filteredItems);
 }
 
-// Start Async function
-async function checkPrices() {
+// set random timout to avoid ddos block
+function randomIntFromInterval(min, max) {
+  // min and max included
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+async function checkKabumPrices() {
   let resultData = [];
 
   itensToCheck.forEach((item) => {
     resultData.push(Object.assign({}, item));
   });
 
-  const pricesToNotify = [];
-
-  // Price getters loop
+  const products = [];
   for (const [index, item] of resultData.entries()) {
-    const kabumPrices = checkKabum(item);
-    const pichauPrices = checkPichau(item);
-
-    await Promise.all([kabumPrices, pichauPrices]).then(async () => {
-      resultData[index].kabum = await kabumPrices;
-      resultData[index].pichau = await pichauPrices;
-    });
+    try {
+      const terabytePrices = await checkKabum(item);
+      products.push(...terabytePrices.filter((price) => price.shouldNotify));
+    } catch {
+      console.log("Unhandled Error Kabum");
+    }
   }
+  sendNotifications(products, "Kabum");
 
-  // Check and notify loop
-  resultData.forEach((item) => {
-    const { kabum, pichau } = item;
+  // Fixed Timout - no problems with blockers
+  const nextRoundTimeout = 60000;
 
-    kabum &&
-      pricesToNotify.push(...kabum.filter((price) => price.shouldNotify));
-    pichau &&
-      pricesToNotify.push(...pichau.filter((price) => price.shouldNotify));
-  });
-
-  sendNotifications(pricesToNotify);
+  setTimeout(() => {
+    checkTerabytePrices();
+  }, nextRoundTimeout);
 }
 
 async function checkTerabytePrices() {
@@ -387,39 +344,52 @@ async function checkTerabytePrices() {
     resultData.push(Object.assign({}, item));
   });
 
-  const tbPrices = [];
+  const products = [];
   for (const [index, item] of resultData.entries()) {
     try {
       const terabytePrices = await checkTerabyte(item);
-      tbPrices.push(...terabytePrices.filter((price) => price.shouldNotify));
+      products.push(...terabytePrices.filter((price) => price.shouldNotify));
     } catch {
-      console.log(" Error Terabyte");
+      console.log("Unhandled Error Terabyte");
     }
   }
-  sendNotifications(tbPrices);
-
-  // set random timout to avoid ddos block
-  function randomIntFromInterval(min, max) {
-    // min and max included
-    return Math.floor(Math.random() * (max - min + 1) + min);
-  }
+  sendNotifications(products, "Terabyte");
 
   // From 2 to 5 minutes
-  const rndInt = randomIntFromInterval(120000, 300000);
+  const nextRoundTimeout = randomIntFromInterval(120000, 300000);
 
   setTimeout(() => {
     checkTerabytePrices();
-  }, rndInt);
+  }, nextRoundTimeout);
+}
+
+async function checkPichauPrices() {
+  let resultData = [];
+
+  itensToCheck.forEach((item) => {
+    resultData.push(Object.assign({}, item));
+  });
+
+  const products = [];
+  for (const [index, item] of resultData.entries()) {
+    try {
+      const pichauPrices = await checkPichau(item);
+      products.push(...pichauPrices.filter((price) => price.shouldNotify));
+    } catch {
+      console.log("Unhandled Error Pichau");
+    }
+  }
+  sendNotifications(products, "Pichau");
+
+  // Fixed Timout - no problems with blockers
+  const nextRoundTimeout = 60000;
+
+  setTimeout(() => {
+    checkPichauPrices();
+  }, nextRoundTimeout);
 }
 
 // Initial run
-checkPrices();
-
-// Initial Terabyte Prices
+checkKabumPrices();
 checkTerabytePrices();
-
-// Since it takes about 15sec to run, we run it every minute
-// without tracking if it finished the first one
-setInterval(() => {
-  checkPrices();
-}, 60000);
+checkPichauPrices();
