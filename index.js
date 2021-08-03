@@ -1,3 +1,76 @@
+const proxyList = [
+  "45.226.218.34:5678",
+  "177.126.198.1:5678",
+  "170.78.93.63:5678",
+  "201.182.9.206:5678",
+  "177.75.161.77:5678",
+  "138.97.2.215:4145",
+  "187.86.153.254:30660",
+  "164.163.181.115:5678",
+  "191.7.161.73:5678",
+  "186.235.33.186:5678",
+  "179.189.254.14:5678",
+  "177.8.169.94:5678",
+  "189.45.129.138:5678",
+  "143.0.208.25:5678",
+  "138.219.147.27:5678",
+  "177.52.193.142:5678",
+  "177.87.36.162:5678",
+  "164.163.181.174:5678",
+  "143.137.4.148:5678",
+  "177.74.136.6:5678",
+  "177.38.13.135:5678",
+  "170.254.11.212:5678",
+  "186.251.250.10:3629",
+  "186.251.250.15:5678",
+  "177.37.104.250:5678",
+  "177.137.223.53:5678",
+  "164.163.181.159:5678",
+  "179.189.178.6:5678",
+  "177.137.160.95:5678",
+  "177.75.6.138:5678",
+  "170.233.230.39:5678",
+  "138.36.1.54:5678",
+  "168.181.63.243:5678",
+  "201.182.174.160:5678",
+  "168.195.229.27:5678",
+  "187.60.149.61:5678",
+  "189.84.118.206:5678",
+  "186.235.33.2:5678",
+  "170.231.64.93:5678",
+  "177.75.11.98:5678",
+  "201.33.58.10:5678",
+  "177.47.203.21:5678",
+  "186.235.1.2:5678",
+  "138.204.82.20:5678",
+  "168.196.42.78:5678",
+  "177.74.136.21:5678",
+  "131.255.132.189:5678",
+  "201.182.11.186:5678",
+  "201.182.9.206:5678",
+  "187.17.163.141:5678",
+  "179.197.84.9:5678",
+  "177.87.36.162:5678",
+  "177.152.175.58:5678",
+  "177.137.163.62:4145",
+  "177.69.229.57:5678",
+  "177.44.28.159:5678",
+  "170.79.83.9:5678",
+  "45.227.149.166:5678",
+  "138.204.74.233:5678",
+  "177.126.157.4:5678",
+  "201.18.144.234:5678",
+  "131.221.233.150:5678",
+  "191.6.55.212:5678",
+  "187.95.120.138:5678",
+  "170.79.158.229:5678",
+  "131.100.219.65:5678",
+  "177.74.136.6:5678",
+  "168.232.122.35:5678",
+  "177.74.157.107:5678",
+  "177.135.205.90:5678",
+];
+
 const itensToCheck = [
   {
     name: "RTX 3060",
@@ -61,6 +134,19 @@ const TelegramBot = require("node-telegram-bot-api");
 const token = "1903828310:AAH3IReLGtI9ndkeF41F84wuPvRmpOYBFaQ";
 const bot = new TelegramBot(token);
 
+// set random timout to avoid ddos block
+function randomIntFromInterval(min, max) {
+  // min and max included
+  return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+// Async delay function
+function delay(time) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve, time);
+  });
+}
+
 // SEND INITIAL MESSAGE TO GROUP
 const initialMessage =
   "<b>BOT STARTED</b>\n\n\n" +
@@ -123,7 +209,10 @@ async function checkKabum(item) {
 
 // Check Pichau prices for a give item and return an array with available products
 async function checkPichau(item) {
-  const browser = await puppeteer.launch({ headless: useHeadless });
+  const browser = await puppeteer.launch({
+    headless: useHeadless,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
 
   try {
     const page = await browser.newPage();
@@ -201,7 +290,15 @@ async function checkPichau(item) {
 
 // Check Terabyte prices for a give item and return an array with available products
 async function checkTerabyte(item) {
-  const browser = await puppeteer.launch({ headless: useHeadless });
+  const proxyIndex = randomIntFromInterval(0, proxyList.length - 1);
+  const browser = await puppeteer.launch({
+    headless: useHeadless,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      `--proxy-server=socks4://${proxyList[proxyIndex]}`,
+    ],
+  });
 
   try {
     const page = await browser.newPage();
@@ -224,7 +321,7 @@ async function checkTerabyte(item) {
     });
 
     // Wair for the protection to resolve
-    await page.waitFor(config.terabyte.itemsSelector, { timeout: 120000 });
+    await page.waitForSelector(config.terabyte.itemsSelector, { timeout: 30000 });
 
     const result = await page.evaluate(
       (config, item) => {
@@ -305,19 +402,6 @@ function sendNotifications(itemsToNotify, storeTitle) {
   messagedItems.push(...filteredItems);
 }
 
-// set random timout to avoid ddos block
-function randomIntFromInterval(min, max) {
-  // min and max included
-  return Math.floor(Math.random() * (max - min + 1) + min);
-}
-
-// Async delay function
-function delay(time) {
-  return new Promise(function (resolve) {
-    setTimeout(resolve, time);
-  });
-}
-
 async function checkKabumPrices() {
   let resultData = [];
 
@@ -352,21 +436,26 @@ async function checkTerabytePrices() {
   });
 
   const products = [];
+
   for (const [index, item] of resultData.entries()) {
-    try {
-      // From 1 to 10 minutes
-      const randomDelay = randomIntFromInterval(1000, 10000);
-      await delay(randomDelay);
-      const terabytePrices = await checkTerabyte(item);
-      products.push(...terabytePrices.filter((price) => price.shouldNotify));
-    } catch {
-      console.log("Unhandled Error Terabyte");
+    let errCounter = 0;
+    let success = false;
+    // Try different proxy while not success (5 times);
+    while (!success && errCounter < 4) {
+      try {
+        const terabytePrices = await checkTerabyte(item);
+        products.push(...terabytePrices.filter((price) => price.shouldNotify));
+        success = true;
+      } catch {
+        errCounter++;
+      }
     }
   }
+
   sendNotifications(products, "Terabyte");
 
   // From 2 to 5 minutes
-  const nextRoundTimeout = randomIntFromInterval(120000, 300000);
+  const nextRoundTimeout = 60000;
 
   setTimeout(() => {
     checkTerabytePrices();
