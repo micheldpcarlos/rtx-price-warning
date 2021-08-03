@@ -211,7 +211,6 @@ async function checkKabum(item) {
 async function checkPichau(item) {
   const browser = await puppeteer.launch({
     headless: useHeadless,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
   try {
@@ -301,11 +300,7 @@ async function checkTerabyte(item) {
   const proxyIndex = randomIntFromInterval(0, proxyList.length - 1);
   const browser = await puppeteer.launch({
     headless: useHeadless,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      `--proxy-server=socks4://${proxyList[proxyIndex]}`,
-    ],
+    args: [`--proxy-server=socks4://${proxyList[proxyIndex]}`],
   });
 
   try {
