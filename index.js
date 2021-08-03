@@ -46,7 +46,7 @@ const config = {
 };
 
 const messagedItems = [];
-const useHeadless = true;
+const useHeadless = false;
 
 // Puppeteer import constant
 const puppeteer = require("puppeteer-extra");
@@ -236,7 +236,7 @@ async function checkPichau(item) {
 
     return result;
   } catch (error) {
-    // await browser.close();
+    await browser.close();
     console.log("ERROR WHILE PROCESSING PICHAU => ", item, error);
   }
 }
