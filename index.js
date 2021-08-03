@@ -45,7 +45,7 @@ const config = {
   },
 };
 const messagedItems = [];
-const useHeadless = false;
+const useHeadless = true;
 
 // Puppeteer import constant
 const puppeteer = require("puppeteer");
@@ -311,6 +311,13 @@ function randomIntFromInterval(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
+// Async delay function
+function delay(time) {
+  return new Promise(function (resolve) {
+    setTimeout(resolve, time);
+  });
+}
+
 async function checkKabumPrices() {
   let resultData = [];
 
@@ -333,7 +340,7 @@ async function checkKabumPrices() {
   const nextRoundTimeout = 60000;
 
   setTimeout(() => {
-    checkTerabytePrices();
+    checkKabumPrices();
   }, nextRoundTimeout);
 }
 
@@ -347,6 +354,9 @@ async function checkTerabytePrices() {
   const products = [];
   for (const [index, item] of resultData.entries()) {
     try {
+      // From 1 to 10 minutes
+      const randomDelay = randomIntFromInterval(1000, 10000);
+      await delay(randomDelay);
       const terabytePrices = await checkTerabyte(item);
       products.push(...terabytePrices.filter((price) => price.shouldNotify));
     } catch {
