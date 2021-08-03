@@ -281,11 +281,16 @@ async function checkPichau(item) {
       item
     );
 
+    const pages = await browser.pages();
+    await Promise.all(pages.map((page) => page.close()));
+
     await browser.close();
     console.log(`Processed ${item.name} - Pichau - Qtd: ${result.length}`);
 
     return result;
   } catch (error) {
+    const pages = await browser.pages();
+    await Promise.all(pages.map((page) => page.close()));
     await browser.close();
     console.log("ERROR WHILE PROCESSING PICHAU => ", item, error);
   }
@@ -373,11 +378,15 @@ async function checkTerabyte(item) {
       item
     );
 
+    const pages = await browser.pages();
+    await Promise.all(pages.map((page) => page.close()));
     await browser.close();
     console.log(`Processed ${item.name} - Terabyte - Qtd: ${result.length}`);
 
     return result;
   } catch (error) {
+    const pages = await browser.pages();
+    await Promise.all(pages.map((page) => page.close()));
     await browser.close();
     console.log("ERROR WHILE PROCESSING TERABYTE => ", item, error);
   }
