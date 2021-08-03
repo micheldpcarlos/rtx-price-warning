@@ -323,6 +323,7 @@ async function checkTerabyte(item) {
 }
 
 function sendNotifications(itemsToNotify) {
+  console.log("==== Sending notifications ====");
   // filter only if it is not notified yet (considering name and price)
   const filteredItems = itemsToNotify.filter(
     (item) =>
@@ -376,7 +377,6 @@ async function checkPrices() {
       pricesToNotify.push(...pichau.filter((price) => price.shouldNotify));
   });
 
-  console.log("=> HANDLE NOTIFICATIONS");
   sendNotifications(pricesToNotify);
 }
 
