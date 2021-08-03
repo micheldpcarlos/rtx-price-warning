@@ -229,6 +229,9 @@ async function checkPichau(item) {
 
     await page.goto(url, { waitUntil: "domcontentloaded" });
 
+    // Wair a bit for rendering
+    await page.waitForTimeout(1000);
+
     const result = await page.evaluate(
       (config, item) => {
         // Get all products
@@ -320,7 +323,7 @@ async function checkTerabyte(item) {
       waitUntil: "domcontentloaded",
     });
 
-    // Wair for the protection to resolve
+    // Wair for the element
     await page.waitForSelector(config.terabyte.itemsSelector, {
       timeout: 30000,
     });
@@ -481,11 +484,23 @@ async function checkPichauPrices() {
 
   const products = [];
   for (const [index, item] of resultData.entries()) {
-    try {
-      const pichauPrices = await checkPichau(item);
-      products.push(...pichauPrices.filter((price) => price.shouldNotify));
-    } catch {
-      console.log("Unhandled Error Pichau");
+    let errCounter = 0;
+    let success = false;
+    // Try different proxy while not success (5 times);
+    while (!success && errCounter < 5) {
+      try {
+        await checkPichau(item).then((pichauPrices) => {
+          products.push(...pichauPrices.filter((price) => price.shouldNotify));
+          success = true;
+        });
+      } catch {
+        if (errCounter < 5) {
+          console.log(`Pichau error getting ${item.name} trying again...`);
+          errCounter++;
+        } else {
+          console.log(`Pichau ${item.name} - all attempts failed`);
+        }
+      }
     }
   }
   sendNotifications(products, "Pichau");
