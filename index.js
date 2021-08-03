@@ -160,7 +160,7 @@ const initialMessage =
     );
   }, "");
 
-// bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
+bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
 
 // Check Kabum prices for a give item and return an array with available products
 async function checkKabum(item) {
@@ -321,7 +321,9 @@ async function checkTerabyte(item) {
     });
 
     // Wair for the protection to resolve
-    await page.waitForSelector(config.terabyte.itemsSelector, { timeout: 30000 });
+    await page.waitForSelector(config.terabyte.itemsSelector, {
+      timeout: 30000,
+    });
 
     const result = await page.evaluate(
       (config, item) => {
