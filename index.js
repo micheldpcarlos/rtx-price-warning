@@ -413,13 +413,13 @@ async function checkTerabytePrices() {
 }
 
 // Initial run
-//checkPrices();
+checkPrices();
 
 // Initial Terabyte Prices
 checkTerabytePrices();
 
 // Since it takes about 15sec to run, we run it every minute
 // without tracking if it finished the first one
-// setInterval(() => {
-//   checkPrices();
-// }, 60000);
+setInterval(() => {
+  checkPrices();
+}, 60000);
