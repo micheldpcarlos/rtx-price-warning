@@ -33,6 +33,7 @@ const config = {
     itemsSelector:
       ".MuiGrid-root.MuiGrid-item.MuiGrid-grid-xs-12.MuiGrid-grid-sm-6.MuiGrid-grid-md-4.MuiGrid-grid-lg-3.MuiGrid-grid-xl-2",
     titleSelector: ".MuiTypography-root.jss63.jss64.MuiTypography-h6",
+    seccondTitleSelector: ".MuiTypography-root.jss58.jss59.MuiTypography-h6",
     priceSelector: ".jss66",
   },
   terabyte: {
@@ -47,10 +48,17 @@ const config = {
 const messagedItems = [];
 const useHeadless = false;
 
-
-
 // Puppeteer import constant
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-extra");
+
+// add stealth plugin and use defaults (all evasion techniques)
+const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+puppeteer.use(StealthPlugin());
+
+// Add adblocker plugin, which will transparently block ads in all pages you
+// create using puppeteer.
+const AdblockerPlugin = require("puppeteer-extra-plugin-adblocker");
+puppeteer.use(AdblockerPlugin({ blockTrackers: true }));
 
 // Axios to get data directly from API
 const axios = require("axios");
@@ -62,6 +70,9 @@ const randomUseragent = require("random-useragent");
 const TelegramBot = require("node-telegram-bot-api");
 const token = "1903828310:AAH3IReLGtI9ndkeF41F84wuPvRmpOYBFaQ";
 const bot = new TelegramBot(token, { polling: true });
+
+// LET ME LISTEN ALL BROWSERS
+process.setMaxListeners(Infinity);
 
 // SEND INITIAL MESSAGE TO GROUP
 const initialMessage =
@@ -76,7 +87,7 @@ const initialMessage =
     );
   }, "");
 
-bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
+// bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
 
 // Set telegram bot listener
 bot.on("message", (msg) => {
@@ -159,6 +170,8 @@ async function checkPichau(item) {
   try {
     const page = await browser.newPage();
 
+    await page.setViewport({ width: 1600, height: 900 });
+
     const url = config.pichau.listingAddress.replace(
       "{{SearchTerm}}",
       item.name
@@ -168,9 +181,6 @@ async function checkPichau(item) {
     await page.setUserAgent(randomUseragent.getRandom());
 
     await page.goto(url, { waitUntil: "domcontentloaded" });
-
-    // wait few secconds to ensure page load
-    await delay(10000);
 
     const result = await page.evaluate(
       (config, item) => {
@@ -186,10 +196,13 @@ async function checkPichau(item) {
           )
           // Map to a serializable value to return to evaluate method
           .map((product) => {
+            console.log(product);
             // Title
-            const title = product.querySelector(
-              config.pichau.titleSelector
-            ).textContent;
+            const titleEl =
+              product.querySelector(config.pichau.titleSelector) ||
+              product.querySelector(config.pichau.seccondTitleSelector);
+
+            const title = titleEl.innerHTML;
 
             // Link
             const link = product.firstChild.getAttribute("href");
@@ -223,7 +236,7 @@ async function checkPichau(item) {
 
     return result;
   } catch (error) {
-    await browser.close();
+    // await browser.close();
     console.log("ERROR WHILE PROCESSING PICHAU => ", item, error);
   }
 }
@@ -235,6 +248,8 @@ async function checkTerabyte(item) {
 
   try {
     const page = await browser.newPage();
+
+    await page.setViewport({ width: 1600, height: 900 });
 
     const url = config.terabyte.listingAddress.replace(
       "{{SearchTerm}}",
