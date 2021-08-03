@@ -87,7 +87,7 @@ const initialMessage =
     );
   }, "");
 
-bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
+//bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
 
 // Set telegram bot listener
 bot.on("message", (msg) => {
@@ -261,6 +261,9 @@ async function checkTerabyte(item) {
 
     await page.goto(url, { waitUntil: "domcontentloaded" });
 
+    // Wait for checking
+    await delay(10000);
+
     const result = await page.evaluate(
       (config, item) => {
         // Get all products
@@ -281,8 +284,6 @@ async function checkTerabyte(item) {
             );
             const link = titleLink.getAttribute("href");
             const title = titleLink.textContent;
-
-            console.log(product.innerHTML);
 
             //Price and numericPrice
             const price = product.querySelector(
@@ -309,8 +310,8 @@ async function checkTerabyte(item) {
     );
 
     await browser.close();
-
     console.log("Processed Terabyte", result.length);
+
     return result;
   } catch (error) {
     await browser.close();
