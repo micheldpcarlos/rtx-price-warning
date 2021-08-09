@@ -209,8 +209,10 @@ async function checkKabum(item) {
 
 // Check Pichau prices for a give item and return an array with available products
 async function checkPichau(item) {
+  const proxyIndex = randomIntFromInterval(0, proxyList.length - 1);
   const browser = await puppeteer.launch({
     headless: useHeadless,
+    args: [`--proxy-server=socks4://${proxyList[proxyIndex]}`],
   });
 
   try {
