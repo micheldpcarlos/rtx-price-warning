@@ -1,3 +1,4 @@
+// YOU MIGHT NEED TO UPDATE THIS LIST TO ENSURE IT IS WORKING
 const proxyList = [
   "45.226.218.34:5678",
   "177.126.198.1:5678",
@@ -71,6 +72,7 @@ const proxyList = [
   "177.135.205.90:5678",
 ];
 
+// Itens and minimum price to alert
 const itensToCheck = [
   {
     name: "RTX 3060",
@@ -88,8 +90,17 @@ const itensToCheck = [
     name: "RTX 3070 Ti",
     minToAlert: 5850,
   },
+  {
+    name: "RTX 3080",
+    minToAlert: 7900,
+  },
+  {
+    name: "RTX 3080 Ti",
+    minToAlert: 9000,
+  },
 ];
 
+// Data used to config crawler
 const config = {
   kabum: {
     rootAddress: "www.kabum.com.br",
@@ -131,7 +142,11 @@ const randomUseragent = require("random-useragent");
 
 // Telegram Bot constants
 const TelegramBot = require("node-telegram-bot-api");
-const token = "1903828310:AAH3IReLGtI9ndkeF41F84wuPvRmpOYBFaQ";
+const argv = require('minimist')(process.argv.slice(2));
+const token = argv.token;
+const groupId = argv.group;
+if (!token) { console.log("TELEGRAM TOKEN IS REQUIRED!"); return }
+if (!groupId) { console.log("GROUP ID IS REQUIRED!"); return }
 const bot = new TelegramBot(token);
 
 // set random timout to avoid ddos block
@@ -160,7 +175,7 @@ const initialMessage =
     );
   }, "");
 
-bot.sendMessage("-587267780", initialMessage, { parse_mode: "HTML" });
+bot.sendMessage(groupId, initialMessage, { parse_mode: "HTML" });
 
 // Check Kabum prices for a give item and return an array with available products
 async function checkKabum(item) {
@@ -211,8 +226,7 @@ async function checkKabum(item) {
 async function checkPichau(item) {
   const proxyIndex = randomIntFromInterval(0, proxyList.length - 1);
   const browser = await puppeteer.launch({
-    headless: useHeadless,
-    args: [`--proxy-server=socks4://${proxyList[proxyIndex]}`],
+    headless: useHeadless
   });
 
   try {
@@ -223,7 +237,7 @@ async function checkPichau(item) {
     const url = config.pichau.listingAddress.replace(
       "{{SearchTerm}}",
       item.name
-    );
+    ).replace(' ', '%20').replace(' ', '%20');
 
     // Set UserAgent to bypass Headless access protection
     await page.setUserAgent(randomUseragent.getRandom());
@@ -231,7 +245,7 @@ async function checkPichau(item) {
     await page.goto(url, { waitUntil: "domcontentloaded" });
 
     // Wair a bit for rendering
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(5000);
 
     const result = await page.evaluate(
       (config, item) => {
@@ -404,9 +418,11 @@ function sendNotifications(itemsToNotify, storeTitle) {
   filteredItems.forEach((item, index) => {
     const message = `🚨🚨 <b>ALERTA ${item.name}</b> 🚨🚨\n\n${item.title}\n\n\n➡️  <b>${item.price}</b>\n\n\n${item.link}`;
 
-    // delay per message to avoid span filter when a lot of notifications to do
+    // delay per message to avoid span filter when it has a lot of notifications to do
+
+    // CUSTOM GROUP ID IS NEEDED FOR ALETS
     setTimeout(() => {
-      bot.sendMessage("-587267780", message, { parse_mode: "HTML" });
+      bot.sendMessage(groupId, message, { parse_mode: "HTML" });
     }, index * 200 * index);
   });
 
